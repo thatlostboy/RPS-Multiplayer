@@ -1,3 +1,10 @@
+/* this is to enable support for safari ios 
+https://stackoverflow.com/questions/35945970/jquery-on-click-not-working-on-iphone-touch-devices
+*/
+body {
+    cursor: pointer;
+}
+
 #chatBox {
     margin-top: 30px;
     height: 200px;
@@ -13,7 +20,6 @@
 }
 
 .playerSelect {
-    cursor:pointer;
     line-height: 2em;
 }
 
@@ -30,13 +36,6 @@
     border: 2px solid green;
 }
 
-.trashTalk {
-    cursor:pointer;
-}
-
-#playerStart {
-    cursor:pointer;
-}
 
 /*
 rotate 270 degress and flip X corrdinates (5 to -5).   
