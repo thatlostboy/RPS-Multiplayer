@@ -9,8 +9,6 @@ $(document).ready(function () {
         addPlayer(playerName);
     });
 
-    // insert chat
-    $('body').on("click, ")
 
 
     // player pick rock,paper,scissor
@@ -555,7 +553,7 @@ function renderEndGame(playerNum, winner) {
         // wait X seconds to enjoy victory before next round
         setTimeout(function () {
             renderStartGame(playerNum);
-        }, 5000)
+        }, 3000)
 
     });
 }
