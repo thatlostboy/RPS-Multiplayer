@@ -54,7 +54,7 @@ $(document).ready(function () {
     // reset everything if acting wierd
     $("body").on("click", "#resetBtn", function (event) {
         event.preventDefault();
-        var resetConfirmed = confirm("Are you sure you want to reset?  Reset will clear chat and current players?  You can just refresh your browser or shut it off if you want a new Participant to Join.");
+        var resetConfirmed = confirm("Are you sure you want to reset?  Reset will clear chat and current players?  You can just refresh your browser or shut it off if you want a new Participant to Join.  If so opt to do this reset, please refresh all the browsers watching or participating in the RPG game");
         if (resetConfirmed) {
             database.ref().remove();
         }
@@ -367,8 +367,12 @@ database.ref('players').on("child_removed", function (snapshot) {
             playerName: name,
             playerMsg: msg,
         };
-        database.ref("/chat").push(msgObj);
-        console.log("I just got pushed in!  ");
+        // only add chat message if you are player 1, this avoid duplicates
+        if (playingNow && playerNumber === 1) {
+            database.ref("/chat").push(msgObj);
+            console.log("I just got pushed in!  ");
+        }
+
 
         // if playdr 2 exit, blank out player 1
     } else if (player2Exist) {
@@ -382,8 +386,11 @@ database.ref('players').on("child_removed", function (snapshot) {
             playerName: name,
             playerMsg: msg,
         };
-        database.ref("/chat").push(msgObj);
-        console.log("I just got pushed it too!");
+        // only add chat message if you are player 2, this avoid duplicates
+        if (playingNow && playerNumber === 2) {
+            database.ref("/chat").push(msgObj);
+            console.log("I just got pushed in!  ");
+        }
 
         // if either exist, blank them all out!  
     } else {
@@ -591,9 +598,9 @@ function renderEndGame(playerNum, winner) {
         console.log("winner paassed in is: ", winner);
         // display winner
         if (winner === "player1") {
-            $("#winnerDeclared").html("Winner is: " + playersRes[1].name);
+            $("#winnerDeclared").html("Winner is:<br>" + playersRes[1].name);
         } else if (winner === "player2") {
-            $("#winnerDeclared").html("Winner is: " + playersRes[2].name);
+            $("#winnerDeclared").html("Winner is:<br>" + playersRes[2].name);
         } else {
             $("#winnerDeclared").html("It's a Tie!");
         }
