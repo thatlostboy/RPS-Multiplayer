@@ -13,6 +13,7 @@
 }
 
 .playerSelect {
+    cursor:pointer;
     line-height: 2em;
 }
 
@@ -29,6 +30,13 @@
     border: 2px solid green;
 }
 
+.trashTalk {
+    cursor:pointer;
+}
+
+#playerStart {
+    cursor:pointer;
+}
 
 /*
 rotate 270 degress and flip X corrdinates (5 to -5).   
