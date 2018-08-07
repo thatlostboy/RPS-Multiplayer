@@ -9,6 +9,9 @@ $(document).ready(function () {
         addPlayer(playerName);
     });
 
+    // insert chat
+    $('body').on("click, ")
+
 
     // player pick rock,paper,scissor
     $("body").on("click", ".playerSelect", function (event) {
@@ -22,7 +25,32 @@ $(document).ready(function () {
         //update selection on DB
         database.ref("players/" + playerNumber).update(choice);
 
+        //update photo based on selection
+        playerNumberInt = parseInt(playerNumber);
+        renderSelection(playerNumberInt, playerChoice);
+
     });
+
+    
+    // trash talk handler
+    $("body").on("click", ".trashTalk", function(event){
+        event.preventDefault();
+        if (playingNow) {
+            let name = player[playerNumber-1].name;
+            let msg = $("#trashTalkText").val().trim();
+            if (msg !== "") {
+                msgObj = {
+                    playerNum: playerNumber,
+                    playerName: name,
+                    playerMsg: msg,
+                }
+                database.ref("/chat").push(msgObj);
+            }   
+        } else {
+            $("#trashTalkText").val("Type in your name above and click Start to play and trash Talk!");
+        }
+
+    })
 });
 
 
@@ -45,7 +73,7 @@ var player = [
 ]
 
 var playerNumber = -1;
-var notPlayingNow = true;
+var playingNow = false;
 
 // Initialize Firebase
 var config = {
@@ -60,8 +88,16 @@ var config = {
 firebase.initializeApp(config);
 var database = firebase.database();
 
+// initialize Names if any there.  
+database.ref("players").once("value", function (snapshot) {
+    var playersRes = snapshot.val();
+    $("#player1name").text("Player 1: " + playersRes[1].name);
+    $("#player2name").text("Player 2: " + playersRes[2].name);
+});
 
-// game played mostly by checking the results
+
+// game played mostly by checking the results of child changed for players below
+// t
 var count = 0;
 database.ref("players").on("child_changed", function (snapshot) {
     count++;
@@ -76,11 +112,10 @@ database.ref("players").on("child_changed", function (snapshot) {
 
         var playerRes = snapshot.val();
 
-
         // let's see what changed
         console.log("changed results: ", playerRes);
 
-        // capture player ifno
+        // capture player information into variable
         var player1Choice = playerRes[1].choice;
         var player1Wins = playerRes[1].wins;
         var player1Losses = playerRes[1].losses;
@@ -88,7 +123,45 @@ database.ref("players").on("child_changed", function (snapshot) {
         var player2Wins = playerRes[2].wins;
         var player2Losses = playerRes[2].losses;
 
-        // if both values are  filled in, we have a game!  
+        // update names and scores on display 
+        $("#player1wins").text(player1Wins);
+        $("#player1losses").text(player1Losses);
+        $("#player2wins").text(player2Wins);
+        $("#player2losses").text(player2Losses);
+
+
+        var playerRes = snapshot.val();
+
+        // who's turn is it?
+        console.log("what is playerNumver an choice?",playerNumber, player1Choice, player2Choice);
+
+
+        
+        if (playerNumber === 1) {
+            if (player1Choice === ""){
+                $("#playerTurn").text("It's your turn , player 1!");
+                console.log("It's your turn , player 1!");
+            // if player 1 already made selection then waiting on player 2
+            } else if (player2Choice === "") {
+                $("#playerTurn").text("Waiting on player 2!");
+                console.log("Waiting on player 2!");
+            };
+        } else if (playerNumber === 2) {
+            if (player2Choice === ""){
+                $("#playerTurn").text("It's your turn , player 2!");
+                console.log("It's your turn , player 2!");
+            // if player 1 already made selection then waiting on player 2
+            } else if (player1Choice === "") {
+                $("#playerTurn").text("Waiting on player 1!");
+                console.log("Waiting on player 1!");
+            };
+        } else {
+            $("#playerTurn").empty();
+        }
+
+
+
+        // if both values are filled in, we have a game!  
         if (player1Choice !== "" && player2Choice !== "") {
 
             // reset values
@@ -101,8 +174,15 @@ database.ref("players").on("child_changed", function (snapshot) {
             var winner = playGameLogic(player1Choice, player2Choice);
             console.log("winner is: ", winner);
 
-            // each player update their own scores
+            // each player update their own score on the DB
+            // this is to avoid duplication where 
+            // each player updates the same DB with the same wins/loss
+            // resulting in doublein
+            // eg.  player 1, updates their record in the DB for player 1
+            // plyaer 2 updates their record in the DB for player 2
             if (playerNumber === 1) {
+
+                // increment their own win/loss counter in DB
                 if (winner === "player1") {
                     player1Wins++;
                     player1results = {
@@ -116,7 +196,12 @@ database.ref("players").on("child_changed", function (snapshot) {
                     }
                     database.ref("players/1").update(player1results);
                 }
+
+
+
             } else if (playerNumber === 2) {
+
+                // increment their own win/loss counter in DB
                 if (winner === "player2") {
                     player2Wins++;
                     player2results = {
@@ -132,6 +217,9 @@ database.ref("players").on("child_changed", function (snapshot) {
                 }
             }
 
+            // update the display to show all  
+            renderSelection(1, player1Choice);
+            renderSelection(2, player2Choice);
 
             // update displays for both revealing all!
             renderEndGame(playerNumber, winner);
@@ -145,6 +233,30 @@ database.ref("players").on("child_changed", function (snapshot) {
 
 
 
+// append any new chat messages to the log
+database.ref('chat').on("child_added", function (snappy) {
+
+
+    msgObj = snappy.val();
+    console.log("what chat message was was added: ", msgObj);
+
+    var spanObj = $("<span>");
+    if (msgObj.playerNum === 1) {
+        spanObj.addClass("player1RPS");
+    } else if (msgObj.playerNum === 2) {
+        spanObj.addClass("player2RPS");
+    }
+
+    
+
+    spanObj.text(msgObj.playerName+": "+msgObj.playerMsg+"<br>");
+
+    $("#chatBox").append(spanObj);
+    $('#chatBox').animate({scrollTop: "200px"});
+
+});
+
+
 
 // this is used to check if we want to add new pariticpants when they join 
 database.ref('players').on("child_added", function (snappy) {
@@ -155,6 +267,11 @@ database.ref('players').on("child_added", function (snappy) {
 
         let player1Exist = snapshot.child('players/1').exists();
         let player2Exist = snapshot.child('players/2').exists();
+        database.ref("players").once("value", function (snapshot) {
+            var playersRes = snapshot.val();
+            $("#player1name").text("Player 1: " + playersRes[1].name);
+            $("#player2name").text("Player 2: " + playersRes[2].name);
+        });
 
         database.ref().off("value");
 
@@ -163,23 +280,10 @@ database.ref('players').on("child_added", function (snappy) {
         console.log(snapshot.val());
 
         /// display "Game is in Progress"
-        if (notPlayingNow) {
+        if (!playingNow) {
             if (player1Exist && player2Exist) {
-                $('#gameStatus').show();
-                $('#nameEntry').hide();
-                console.log("should block now!")
-            } else {
-                $('#gameStatus').hide();
-                $('#nameEntry').show();
-            }
-        } else {
-            // if playing and both players exist, show the names
-            if (player1Exist && player2Exist) {
-                database.ref("players").once("value", function (snapshot) {
-                    var playersRes = snapshot.val();
-                    $("#player1name").text(playersRes[1].name);
-                    $("#player2name").text(playersRes[2].name);
-                });
+                $('#nameEntry').html("<h3>Game is in Progress</h3>")
+                $('.trashTalk').attr("disabled","disabled");
             }
         }
 
@@ -189,8 +293,17 @@ database.ref('players').on("child_added", function (snappy) {
 
 // this is used to check if we want to add new pariticpants when they leave
 database.ref('players').on("child_removed", function (snapshot) {
-    var player1Exist = snapshot.child('1').exists();
-    var player2Exist = snapshot.child('2').exists();
+
+    var player1Exist = false;
+    var player2Exist = false;
+    database.ref("players").once("value", function (snapshot) {
+        player1Exist = snapshot.child('1').exists();
+    });
+
+    database.ref("players").once("value", function (snapshot) {
+        player2Exist = snapshot.child('2').exists();
+    });
+
     console.log("let's see if I detect removed");
     console.log(player1Exist);
     console.log("------");
@@ -198,17 +311,78 @@ database.ref('players').on("child_removed", function (snapshot) {
     console.log(snapshot.val());
 
 
-    if (notPlayingNow) {
-        if (player1Exist && player2Exist) {
-            $('#gameStatus').show();
-            $('#nameEntry').hide();
-            console.log("should block now!")
-        } else {
-            $('#gameStatus').hide();
-            $('#nameEntry').show();
-        }
+    // name entry
+    addNameHTML = `
+    <form id="nameEntry" class="form-inline">
+    <div class="form-group mx-sm-3 mb-2">
+        <label for="playerName" class="sr-only"></label>
+        <input type="text" class="form-control" id="playerName" placeholder="Name">
+    </div>
+    <div id="playerInfo">
+        <button id="playerStart" class="helo btn btn-primary mb-2"> Start</button>
+    </div>
+</form>`;
+
+    // if you aren't currently playing, display prompt to allow new player to join
+    if (!playingNow) {
+        $('#whoAmI').html(addNameHTML);
     }
+
+    console.log("-----> did i get called here?-----", player1Exist, player2Exist, "-----");
+    // if player 1 exist, blank out player 2
+    if (player1Exist) {
+        $("#player2name").text("Waiting for Player 2");
+        $("#player2wins").text("0");
+        $("#player2losses").text("0");
+    // if playdr 2 exit, blank out player 1
+    } else if (player2Exist) {
+        $("#player1name").text("Waiting for Player 1");
+        $("#player1wins").text("0");
+        $("#player1losses").text("0");
+    // if either exist, blank them all out!  
+    } else {
+        $("#player2name").text("Waiting for Player 2");
+        $("#player2wins").text("0");
+        $("#player2losses").text("0");
+        $("#player1name").text("Waiting for Player 1");
+        $("#player1wins").text("0");
+        $("#player1losses").text("0");
+
+    }
+
+
+
+
 });
+
+// after click, replace div with icon of rock, paper, or scissor
+function renderSelection(playerNum, playerSel) {
+
+    var placeholder = `<i class="far fa-hand-rock fa-rotate-90 player1RPS"></i><i class="far fa-hand-scissors fa-rotate-90 fa-flip-horizontal player1RPS"></i><i class="far fa-hand-paper fa-rotate-90 player1RPS"></i><i class="far fa-hand-rock player2RPS player2RP"></i><i class="far fa-hand-scissors player2RPS"></i><i class="far fa-hand-paper player2RPS player2RP"></i>`;
+
+    var picSelection = "";
+    if (playerNum === 1) {
+        if (playerSel === "rock") {
+            picSelection = '<i class="far fa-hand-rock fa-8x fa-rotate-90 player1RPS"></i>';
+        } else if (playerSel === "paper") {
+            picSelection = '<i class="far fa-hand-paper fa-8x fa-rotate-90 player1RPS"></i>';
+        } else if (playerSel === "scissor") {
+            picSelection = '<i class="far fa-hand-scissors fa-8x fa-rotate-90 fa-flip-horizontal player1RPS"></i>';
+        }
+        $("#player1Select").html(picSelection);
+    } else if (playerNum === 2) {
+        if (playerSel === "rock") {
+            picSelection = '<i class="far fa-hand-rock fa-8x player2RPS player2RP"></i>';
+        } else if (playerSel === "paper") {
+            picSelection = '<i class="far fa-hand-paper fa-8x player2RPS player2RP"></i>';
+        } else if (playerSel === "scissor") {
+            picSelection = '<i class="far fa-hand-scissors fa-8x player2RPS"></i>';
+        }
+        $("#player2Select").html(picSelection);
+    }
+}
+
+
 
 
 
@@ -242,9 +416,9 @@ function addPlayer(playerName) {
             renderStartGame(playerNumber);
 
 
-            notPlayingNow = false;
-
+            playingNow = true;
             // call some display to update
+
 
         } // if only player 1 in game waiting, join as player 2 
         else if (player1Exist && !player2Exist) {
@@ -257,7 +431,7 @@ function addPlayer(playerName) {
             // blank out the opponent screen
             renderStartGame(playerNumber);
 
-            notPlayingNow = false;
+            playingNow = true;
 
             // call some display to update
 
@@ -272,8 +446,7 @@ function addPlayer(playerName) {
             // blank out the opponent screen
             renderStartGame(playerNumber);
 
-            notPlayingNow = false;
-
+            playingNow = true;
             // call some display to update
 
 
@@ -284,6 +457,7 @@ function addPlayer(playerName) {
             // call some display with bad news
         }
 
+
         // if players are in the game.   
         if (playerNumber > 0) {
             reference = "players/" + playerNumber;
@@ -293,11 +467,15 @@ function addPlayer(playerName) {
             var playerStatus = database.ref("players/" + playerNumber);
             playerStatus.onDisconnect().remove();
 
-            if (!notPlayingNow) {
+            if (playingNow) {
                 if (playerNumber === 1) {
-                    $('#whoAmI').html(player[0].name)
+                    $('#whoAmI').html("<h4>Welcome " + player[0].name + ', you are player 1: RED!</h4>');
+                    $('#whoAmI').addClass('player1RPS');
+                    $('.player1card').addClass("player1color");
                 } else if (playerNumber === 2) {
-                    $('#whoAmI').html(player[1].name)
+                    $('#whoAmI').html("<h4>Welcome " + player[1].name + ', you are player 2: GREEN!</h4>');
+                    $('#whoAmI').addClass('player2RPS');
+                    $('.player2card').addClass("player2color");
                 }
 
             }
@@ -311,6 +489,7 @@ function addPlayer(playerName) {
 }
 
 
+// initialize display of start of game with the rock paper scissor selectors
 function renderStartGame(playerNum) {
 
     var card1BodyHTML = `
@@ -325,27 +504,29 @@ function renderStartGame(playerNum) {
     <p class="playerSelect" playerNum="2" playerchoice="scissor">Scissor</p>
     `;
 
+
+
     database.ref("players").once("value", function (snapshot) {
         var playersRes = snapshot.val();
 
         if (playerNum === 1) {
-            $("#player1name").text(playersRes[1].name);
+            $("#player1name").text("Player 1: " + playersRes[1].name);
             $("#player1wins").text(playersRes[1].wins);
             $("#player1losses").text(playersRes[1].losses);
             $("#player1Select").html(card1BodyHTML);
             $("#player2Select").empty();
-            $("#winnerDeclared").html("BATTLING!")
+            $("#winnerDeclared").html("BATTLING! Pick your weapon!");
         } else if (playerNum === 2) {
-            $("#player2name").text(playersRes[2].name);
+            $("#player2name").text("Player 2: " + playersRes[2].name);
             $("#player2Select").html(card2BodyHTML);
             $("#player1Select").empty();
             $("#player2wins").text(playersRes[2].wins);
             $("#player2losses").text(playersRes[2].losses);
-            $("#winnerDeclared").html("BATTLING!")
+            $("#winnerDeclared").html("BATTLING! Pick your weapon!");
         } else {
+            $("#player1Select").empty();
             $("#player2Select").empty();
-            $("#player2Select").empty();
-            $("#winnerDeclared").html("BATTLING!")
+            $("#winnerDeclared").html("BATTLING! Pick your weapon!");
         };
 
 
@@ -353,13 +534,15 @@ function renderStartGame(playerNum) {
 }
 
 
+
+// declare winner and update the results
 function renderEndGame(playerNum, winner) {
     console.log("endGame!")
 
     database.ref("players").once("value", function (snapshot) {
         var playersRes = snapshot.val();
 
-        console.log("winner paassed in is: ",winner);
+        console.log("winner paassed in is: ", winner);
         // display winner
         if (winner === "player1") {
             $("#winnerDeclared").html("Winner is: " + playersRes[1].name);
@@ -369,22 +552,10 @@ function renderEndGame(playerNum, winner) {
             $("#winnerDeclared").html("It's a Tie!");
         }
 
-        console.log("Did I make it here?");
-
-        // update scores on display
-        $("#player1wins").text(playersRes[1].wins);
-        $("#player1losses").text(playersRes[1].losses);
-        $("#player2wins").text(playersRes[2].wins);
-        $("#player2losses").text(playersRes[2].losses);
-
-
-        // show both chosen weapons
-
-
-        // wait 1 second to next round
+        // wait X seconds to enjoy victory before next round
         setTimeout(function () {
             renderStartGame(playerNum);
-        }, 3000)
+        }, 5000)
 
     });
 }
