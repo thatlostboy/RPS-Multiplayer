@@ -29,12 +29,12 @@ $(document).ready(function () {
 
     });
 
-    
+
     // trash talk handler
-    $("body").on("click", ".trashTalk", function(event){
+    $("body").on("click", ".trashTalk", function (event) {
         event.preventDefault();
         if (playingNow) {
-            let name = player[playerNumber-1].name;
+            let name = player[playerNumber - 1].name;
             let msg = $("#trashTalkText").val().trim();
             if (msg !== "") {
                 msgObj = {
@@ -43,12 +43,24 @@ $(document).ready(function () {
                     playerMsg: msg,
                 }
                 database.ref("/chat").push(msgObj);
-            }   
+                $("#trashTalkText").val("");
+            }
         } else {
             $("#trashTalkText").val("Type in your name above and click Start to play and trash Talk!");
         }
 
     })
+
+    // reset everything if acting wierd
+    $("body").on("click", "#resetBtn", function (event) {
+        event.preventDefault();
+        var resetConfirmed = confirm("Are you sure you want to reset?  Reset will clear chat and current players?  You can just refresh your browser or shut it off if you want a new Participant to Join.");
+        if (resetConfirmed) {
+            database.ref().remove();
+        }
+
+    });
+
 });
 
 
@@ -72,6 +84,8 @@ var player = [
 
 var playerNumber = -1;
 var playingNow = false;
+
+
 
 // Initialize Firebase
 var config = {
@@ -121,6 +135,10 @@ database.ref("players").on("child_changed", function (snapshot) {
         var player2Wins = playerRes[2].wins;
         var player2Losses = playerRes[2].losses;
 
+        // refresh name list
+        player[0].name = playerRes[1].name;
+        player[1].name = playerRes[2].name;
+
         // update names and scores on display 
         $("#player1wins").text(player1Wins);
         $("#player1losses").text(player1Losses);
@@ -131,26 +149,26 @@ database.ref("players").on("child_changed", function (snapshot) {
         var playerRes = snapshot.val();
 
         // who's turn is it?
-        console.log("what is playerNumver an choice?",playerNumber, player1Choice, player2Choice);
+        console.log("what is playerNumver an choice?", playerNumber, player1Choice, player2Choice);
 
 
-        
+
         if (playerNumber === 1) {
-            if (player1Choice === ""){
-                $("#playerTurn").text("It's your turn , player 1!");
+            if (player1Choice === "") {
+                $("#playerTurn").text("It's your turn , " + player[0].name + " !");
                 console.log("It's your turn , player 1!");
-            // if player 1 already made selection then waiting on player 2
+                // if player 1 already made selection then waiting on player 2
             } else if (player2Choice === "") {
-                $("#playerTurn").text("Waiting on player 2!");
-                console.log("Waiting on player 2!");
+                $("#playerTurn").text("Waiting on " + player[1].name + " !");
+                console.log("Waiting on player 2!", player[1].name);
             };
         } else if (playerNumber === 2) {
-            if (player2Choice === ""){
-                $("#playerTurn").text("It's your turn , player 2!");
+            if (player2Choice === "") {
+                $("#playerTurn").text("It's your turn , " + player[1].name + " !");
                 console.log("It's your turn , player 2!");
-            // if player 1 already made selection then waiting on player 2
+                // if player 1 already made selection then waiting on player 2
             } else if (player1Choice === "") {
-                $("#playerTurn").text("Waiting on player 1!");
+                $("#playerTurn").text("Waiting on " + player[0].name + " !");
                 console.log("Waiting on player 1!");
             };
         } else {
@@ -245,13 +263,15 @@ database.ref('chat').on("child_added", function (snappy) {
         spanObj.addClass("player2RPS");
     }
 
-    
 
-    spanObj.text(msgObj.playerName+": "+msgObj.playerMsg+"<br>");
+
+    spanObj.text(msgObj.playerName + ": " + msgObj.playerMsg);
+
 
     $("#chatBox").append(spanObj);
-    $('#chatBox').animate({scrollTop: "200px"});
+    $('#chatBox').animate({ scrollTop: "100000px" });
 
+    
 });
 
 
@@ -271,6 +291,14 @@ database.ref('players').on("child_added", function (snappy) {
             $("#player2name").text("Player 2: " + playersRes[2].name);
         });
 
+        if (player1Exist) {
+            player[0].name=snapshot.child('players/1').val().name.trim();
+        }
+
+        if (player2Exist) {
+            player[1].name = snapshot.child('players/2').val().name.trim();
+        }
+
         database.ref().off("value");
 
         console.log("let's see if I detect added");
@@ -281,7 +309,7 @@ database.ref('players').on("child_added", function (snappy) {
         if (!playingNow) {
             if (player1Exist && player2Exist) {
                 $('#nameEntry').html("<h3>Game is in Progress</h3>")
-                $('.trashTalk').attr("disabled","disabled");
+                $('.trashTalk').attr("disabled", "disabled");
             }
         }
 
@@ -332,12 +360,32 @@ database.ref('players').on("child_removed", function (snapshot) {
         $("#player2name").text("Waiting for Player 2");
         $("#player2wins").text("0");
         $("#player2losses").text("0");
-    // if playdr 2 exit, blank out player 1
+        let name = player[1].name + " disconnected ";
+        let msg = "";
+        msgObj = {
+            playerNum: 2,
+            playerName: name,
+            playerMsg: msg,
+        };
+        database.ref("/chat").push(msgObj);
+        console.log("I just got pushed in!  ");
+
+        // if playdr 2 exit, blank out player 1
     } else if (player2Exist) {
         $("#player1name").text("Waiting for Player 1");
         $("#player1wins").text("0");
         $("#player1losses").text("0");
-    // if either exist, blank them all out!  
+        let name = player[0].name + " disconnected" ;
+        let msg = "";
+        msgObj = {
+            playerNum: 1,
+            playerName: name,
+            playerMsg: msg,
+        };
+        database.ref("/chat").push(msgObj);
+        console.log("I just got pushed it too!");
+
+        // if either exist, blank them all out!  
     } else {
         $("#player2name").text("Waiting for Player 2");
         $("#player2wins").text("0");
@@ -513,18 +561,18 @@ function renderStartGame(playerNum) {
             $("#player1losses").text(playersRes[1].losses);
             $("#player1Select").html(card1BodyHTML);
             $("#player2Select").empty();
-            $("#winnerDeclared").html("BATTLING! Pick your weapon!");
+            $("#winnerDeclared").html("BATTLING! <br> Pick your weapon!");
         } else if (playerNum === 2) {
             $("#player2name").text("Player 2: " + playersRes[2].name);
             $("#player2Select").html(card2BodyHTML);
             $("#player1Select").empty();
             $("#player2wins").text(playersRes[2].wins);
             $("#player2losses").text(playersRes[2].losses);
-            $("#winnerDeclared").html("BATTLING! Pick your weapon!");
+            $("#winnerDeclared").html("BATTLING! <br> Pick your weapon!");
         } else {
             $("#player1Select").empty();
             $("#player2Select").empty();
-            $("#winnerDeclared").html("BATTLING! Pick your weapon!");
+            $("#winnerDeclared").html("BATTLING! <br> Pick your weapon!");
         };
 
 
