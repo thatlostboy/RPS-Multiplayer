@@ -20,10 +20,12 @@ body {
 }
 
 .playerSelect {
+    cursor: pointer;
     line-height: 2em;
 }
 
 .playerSelect:hover {
+    cursor: pointer;
     background: black;
     color: white;
 }
