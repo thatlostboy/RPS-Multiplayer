@@ -1,8 +1,8 @@
 # RPS-Multiplayer
 
-My attempt at doing the RPS multipler
+My attempt at doing the RPS multiplayer
 
-I believe I have most of th features in there. 
+I believe I have most of the features in there. 
 
 1) only two players can play and trash talk with each other
 2) remainder can observer the game and trash talk in real time.   
